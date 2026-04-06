@@ -88,66 +88,68 @@ class _PermissionScreenState extends State<PermissionScreen>
 
     return Scaffold(
       appBar: AppBar(toolbarHeight: 0),
-      body: Column(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("preron.", style: Theme.of(context).textTheme.headlineLarge,),
+                    SizedBox(height: 16,),
+                    Text(
+                      "bKash but Offline: Cashout, Send Money, Balance Check Without the Internet.",
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(color: Colors.white),
+              padding: EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("preron.", style: Theme.of(context).textTheme.headlineLarge,),
-                  SizedBox(height: 16,),
-                  Text(
-                    "bKash but Offline: Cashout, Send Money, Balance Check Without the Internet.",
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      PermissionCard(
+                        title: 'Phone / Call Permission',
+                        iconData: Icons.phone,
+                        isGranted: _callPermissionGranted,
+                        isLoading: _isLoading,
+                        onAction: requestCallPermission,
+                        actionText: 'Grant',
+                      ),
+                      SizedBox(height: 16),
+                      PermissionCard(
+                        title: 'Accessibility Service',
+                        iconData: Icons.accessibility,
+                        isGranted: _accessibilityEnabled,
+                        isLoading: _isLoading,
+                        onAction: openAccessibilitySettings,
+                        actionText: 'Enable',
+                      ),
+                      SizedBox(height: 24),
+                      PreronButton(
+                        text: "Continue",
+                        onPressed: canContinue ? (){
+                          Navigator.pushReplacementNamed(context, '/home');
+                        } : null,
+                      ),
+                      SizedBox(height: 16),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
-          Container(
-            decoration: BoxDecoration(color: Colors.white),
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    PermissionCard(
-                      title: 'Phone / Call Permission',
-                      iconData: Icons.phone,
-                      isGranted: _callPermissionGranted,
-                      isLoading: _isLoading,
-                      onAction: requestCallPermission,
-                      actionText: 'Grant',
-                    ),
-                    SizedBox(height: 16),
-                    PermissionCard(
-                      title: 'Accessibility Service',
-                      iconData: Icons.accessibility,
-                      isGranted: _accessibilityEnabled,
-                      isLoading: _isLoading,
-                      onAction: openAccessibilitySettings,
-                      actionText: 'Enable',
-                    ),
-                    SizedBox(height: 24),
-                    PreronButton(
-                      text: "Continue",
-                      onPressed: canContinue ? (){
-                        Navigator.pushReplacementNamed(context, '/home');
-                      } : null,
-                    ),
-                    SizedBox(height: 16),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

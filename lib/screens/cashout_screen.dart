@@ -129,80 +129,82 @@ class _CashoutScreenState extends State<CashoutScreen> {
         appBar: AppBar(
           toolbarHeight: 0,
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text("bkash Cashout", style: Theme.of(context).textTheme.headlineLarge,),
-                  SizedBox(height: 16,),
-                  Text(
-                    getSubtitle(),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  )
-                ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("bkash Cashout", style: Theme.of(context).textTheme.headlineLarge,),
+                    SizedBox(height: 16,),
+                    Text(
+                      getSubtitle(),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    )
+                  ],
+                ),
               ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                  color: Colors.white
-              ),
-              height: 500,
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  if(_currentStep == CashoutStep.phone)PhoneInput(
-                    value: _phoneNumber,
-                    maxLength: 11,
-                  ),
-                  if(_currentStep == CashoutStep.amount)AmountInput(
-                    value: _amount,
-                    prefixSymbol: '৳',
-                    allowDecimal: false,
-                    maxDigits: 8,
-                  ),
-                  if(_currentStep == CashoutStep.pin)PinInput(
-                    value: _pin,
-                    pinLength: pinLength,
-                    obscureText: true,
-                  ),
-                  Expanded(child: NumericKeypad(
-                    onKeyPressed: _handleKeyPress,
-                    showDecimal: _currentStep == CashoutStep.amount,
-                    showBackspace: true,
-                  )),
-                  SizedBox(height: 16,),
-                  if(_currentStep == CashoutStep.phone)PreronButton(onPressed: canContinueToAmount ? () async {
-                    setState(() {
-                      _currentStep = CashoutStep.amount;
-                    });
-                  } : null, text: "Continue"),
-                  if(_currentStep == CashoutStep.amount)PreronButton(onPressed: canContinueToPin ? (){
-                    setState(() {
-                      _currentStep = CashoutStep.pin;
-                    });
-                  } : null, text: "Continue"),
-                  if(_currentStep == CashoutStep.pin)PreronButton(onPressed: canConfirmCashout ? (){
-                    showModalBottomSheet<bool>(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => CashoutConfirmationBottomSheet(
-                          phoneNumber: _phoneNumber,
-                          amount: _amount,
-                          pin: _pin,
-                        ),
-                        isDismissible: false,
-                        enableDrag: false
-                    );
-                  } : null, text: "Continue",),
-                  SizedBox(height: 16,)
-                ],
-              ),
-            )
-          ],
+              Container(
+                decoration: BoxDecoration(
+                    color: Colors.white
+                ),
+                height: 500,
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    if(_currentStep == CashoutStep.phone)PhoneInput(
+                      value: _phoneNumber,
+                      maxLength: 11,
+                    ),
+                    if(_currentStep == CashoutStep.amount)AmountInput(
+                      value: _amount,
+                      prefixSymbol: '৳',
+                      allowDecimal: false,
+                      maxDigits: 8,
+                    ),
+                    if(_currentStep == CashoutStep.pin)PinInput(
+                      value: _pin,
+                      pinLength: pinLength,
+                      obscureText: true,
+                    ),
+                    Expanded(child: NumericKeypad(
+                      onKeyPressed: _handleKeyPress,
+                      showDecimal: _currentStep == CashoutStep.amount,
+                      showBackspace: true,
+                    )),
+                    SizedBox(height: 16,),
+                    if(_currentStep == CashoutStep.phone)PreronButton(onPressed: canContinueToAmount ? () async {
+                      setState(() {
+                        _currentStep = CashoutStep.amount;
+                      });
+                    } : null, text: "Continue"),
+                    if(_currentStep == CashoutStep.amount)PreronButton(onPressed: canContinueToPin ? (){
+                      setState(() {
+                        _currentStep = CashoutStep.pin;
+                      });
+                    } : null, text: "Continue"),
+                    if(_currentStep == CashoutStep.pin)PreronButton(onPressed: canConfirmCashout ? (){
+                      showModalBottomSheet<bool>(
+                          context: context,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => CashoutConfirmationBottomSheet(
+                            phoneNumber: _phoneNumber,
+                            amount: _amount,
+                            pin: _pin,
+                          ),
+                          isDismissible: false,
+                          enableDrag: false
+                      );
+                    } : null, text: "Continue",),
+                    SizedBox(height: 16,)
+                  ],
+                ),
+              )
+            ],
+          ),
         ),
       ),
     );

@@ -42,28 +42,30 @@ class _SplashScreenState extends State<SplashScreen> {
       appBar: AppBar(
         toolbarHeight: 0,
       ),
-      body: Stack(
-        children: [
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: 300,
-              decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      Theme.of(context).colorScheme.surface,
-                      Colors.white
-                    ],
-                  )
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                height: 300,
+                decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Theme.of(context).colorScheme.surface,
+                        Colors.white
+                      ],
+                    )
+                ),
               ),
             ),
-          ),
-          Center(
-            child: Text("preron.", style: Theme.of(context).textTheme.displaySmall,),
-          ),
-        ],
+            Center(
+              child: Text("preron.", style: Theme.of(context).textTheme.displaySmall,),
+            ),
+          ],
+        ),
       ),
     );
   }

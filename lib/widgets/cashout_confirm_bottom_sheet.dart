@@ -30,16 +30,17 @@ class _CashoutConfirmationBottomSheetState
         _isLoading = true;
       });
 
-      final sim = await UssdService.getSelectedSim();
-      final response = await UssdService.cashOut(
-        pin: widget.pin,
-        simIndex: sim["simIndex"],
-        phoneNumber: widget.phoneNumber,
-        amount: widget.amount,
-      ).timeout(
-        const Duration(seconds: 45),
-        onTimeout: () => throw Exception('Session timed out after 45s'),
-      );
+      await Future.delayed(Duration(seconds: 5));
+      // final sim = await UssdService.getSelectedSim();
+      // final response = await UssdService.cashOut(
+      //   pin: widget.pin,
+      //   simIndex: sim["simIndex"],
+      //   phoneNumber: widget.phoneNumber,
+      //   amount: widget.amount,
+      // ).timeout(
+      //   const Duration(seconds: 45),
+      //   onTimeout: () => throw Exception('Session timed out after 45s'),
+      // );
 
       setState(() {
         _isLoading = false;
@@ -49,13 +50,13 @@ class _CashoutConfirmationBottomSheetState
         context: context,
         isScrollControlled: true,
         builder: (BuildContext ctx) {
-          // return CashoutSuccessBottomSheet(
-          //   response:
-          //   "Cash Out Tk 980.00 to 01700000000 successful. Fee Tk 18.13. Balance Tk 684.38. TrxID CBH5VCS711. Cash Out from 2 Priyo Agents at 1.49% up to 50,000Tk",
-          // );
           return CashoutSuccessBottomSheet(
-            response: response,
+            response:
+            "Cash Out Tk 980.00 to 01700000000 successful. Fee Tk 18.13. Balance Tk 684.38. TrxID CBH5VCS711. Cash Out from 2 Priyo Agents at 1.49% up to 50,000Tk",
           );
+          // return CashoutSuccessBottomSheet(
+          //   response: response,
+          // );
         },
         backgroundColor: Colors.white,
       );
@@ -69,92 +70,94 @@ class _CashoutConfirmationBottomSheetState
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: _isLoading,
-      onPopInvokedWithResult: (didPop, result) {},
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            const Text(
-              'Confirm Cash Out',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F8),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                children: [
-                  _DetailRow(label: 'Agent Number', value: widget.phoneNumber),
-                  const SizedBox(height: 16),
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
-                  const SizedBox(height: 16),
-                  _DetailRow(
-                    label: 'Amount',
-                    value: '৳ ${widget.amount}',
-                    valueStyle: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            PreronButton(
-              onPressed: () {
-                _handleCashout(context);
-              },
-              text: "Confirm",
-              isLoading: _isLoading,
-            ),
-            if (!_isLoading) const SizedBox(height: 12),
-            if (!_isLoading)
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  style: TextButton.styleFrom(
-                    backgroundColor: Colors.grey.shade200,
-                    foregroundColor: const Color(0xFF1A1A1A),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
+    return SafeArea(
+      child: PopScope(
+        canPop: _isLoading,
+        onPopInvokedWithResult: (didPop, result) {},
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-          ],
+              const SizedBox(height: 24),
+
+              const Text(
+                'Confirm Cash Out',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F8F8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  children: [
+                    _DetailRow(label: 'Agent Number', value: widget.phoneNumber),
+                    const SizedBox(height: 16),
+                    const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                    const SizedBox(height: 16),
+                    _DetailRow(
+                      label: 'Amount',
+                      value: '৳ ${widget.amount}',
+                      valueStyle: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              PreronButton(
+                onPressed: () {
+                  _handleCashout(context);
+                },
+                text: "Confirm",
+                isLoading: _isLoading,
+              ),
+              if (!_isLoading) const SizedBox(height: 12),
+              if (!_isLoading)
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey.shade200,
+                      foregroundColor: const Color(0xFF1A1A1A),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

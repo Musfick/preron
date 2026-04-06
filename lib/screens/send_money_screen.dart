@@ -129,98 +129,100 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
 
     return Scaffold(
       appBar: AppBar(toolbarHeight: 0),
-      body: Column(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "bkash Send Money",
-                  style: Theme.of(context).textTheme.headlineLarge,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  getSubtitle(),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                )
-              ],
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-                color: Colors.white
-            ),
-            height: 500,
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                if(_currentStep == SendMoneyStep.phone)PhoneInput(
-                  value: _phoneNumber,
-                  maxLength: 11,
-                ),
-                if(_currentStep == SendMoneyStep.amount)AmountInput(
-                  value: _amount,
-                  prefixSymbol: '৳',
-                  allowDecimal: false,
-                  maxDigits: 8,
-                ),
-                if(_currentStep == SendMoneyStep.pin)PinInput(
-                  value: _pin,
-                  pinLength: pinLength,
-                  obscureText: true,
-                ),
-                if(_currentStep == SendMoneyStep.ref)ReferenceInput(
-                  value: _reference,
-                ),
-                if(_currentStep == SendMoneyStep.phone || _currentStep == SendMoneyStep.pin || _currentStep == SendMoneyStep.amount)Expanded(child: NumericKeypad(
-                  onKeyPressed: _handleKeyPress,
-                  showDecimal: _currentStep == SendMoneyStep.amount,
-                  showBackspace: true,
-                )),
-                if(_currentStep == SendMoneyStep.ref)Expanded(
-                  child: AlphanumericKeypad(
-                    onKeyPressed: _handleKeyPress,
-                    showBackspace: true,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "bkash Send Money",
+                    style: Theme.of(context).textTheme.headlineLarge,
                   ),
-                ),
-                SizedBox(height: 16,),
-                if(_currentStep == SendMoneyStep.phone)PreronButton(onPressed: canContinueFromPhone ? (){
-                  setState(() {
-                    _currentStep = SendMoneyStep.amount;
-                  });
-                } : null, text: "Continue"),
-                if(_currentStep == SendMoneyStep.amount)PreronButton(onPressed: canContinueFromAmount ? (){
-                  setState(() {
-                    _currentStep = SendMoneyStep.ref;
-                  });
-                } : null, text: "Continue"),
-                if(_currentStep == SendMoneyStep.ref)PreronButton(onPressed: canContinueFromRef ? (){
-                  setState(() {
-                    _currentStep = SendMoneyStep.pin;
-                  });
-                } : null, text: "Continue"),
-                if(_currentStep == SendMoneyStep.pin)PreronButton(onPressed: canContinueFromPin ? (){
-                  showModalBottomSheet<bool>(
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => SendMoneyConfirmBottomSheet(
-                        phoneNumber: _phoneNumber,
-                        amount: _amount,
-                        ref: _reference,
-                        pin: _pin,
-                      ),
-                      isDismissible: false,
-                      enableDrag: false
-                  );
-                } : null, text: "Continue"),
-                SizedBox(height: 16,)
-              ],
+                  SizedBox(height: 16),
+                  Text(
+                    getSubtitle(),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  )
+                ],
+              ),
             ),
-          )
-        ],
+            Container(
+              decoration: BoxDecoration(
+                  color: Colors.white
+              ),
+              height: 500,
+              padding: EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  if(_currentStep == SendMoneyStep.phone)PhoneInput(
+                    value: _phoneNumber,
+                    maxLength: 11,
+                  ),
+                  if(_currentStep == SendMoneyStep.amount)AmountInput(
+                    value: _amount,
+                    prefixSymbol: '৳',
+                    allowDecimal: false,
+                    maxDigits: 8,
+                  ),
+                  if(_currentStep == SendMoneyStep.pin)PinInput(
+                    value: _pin,
+                    pinLength: pinLength,
+                    obscureText: true,
+                  ),
+                  if(_currentStep == SendMoneyStep.ref)ReferenceInput(
+                    value: _reference,
+                  ),
+                  if(_currentStep == SendMoneyStep.phone || _currentStep == SendMoneyStep.pin || _currentStep == SendMoneyStep.amount)Expanded(child: NumericKeypad(
+                    onKeyPressed: _handleKeyPress,
+                    showDecimal: _currentStep == SendMoneyStep.amount,
+                    showBackspace: true,
+                  )),
+                  if(_currentStep == SendMoneyStep.ref)Expanded(
+                    child: AlphanumericKeypad(
+                      onKeyPressed: _handleKeyPress,
+                      showBackspace: true,
+                    ),
+                  ),
+                  SizedBox(height: 16,),
+                  if(_currentStep == SendMoneyStep.phone)PreronButton(onPressed: canContinueFromPhone ? (){
+                    setState(() {
+                      _currentStep = SendMoneyStep.amount;
+                    });
+                  } : null, text: "Continue"),
+                  if(_currentStep == SendMoneyStep.amount)PreronButton(onPressed: canContinueFromAmount ? (){
+                    setState(() {
+                      _currentStep = SendMoneyStep.ref;
+                    });
+                  } : null, text: "Continue"),
+                  if(_currentStep == SendMoneyStep.ref)PreronButton(onPressed: canContinueFromRef ? (){
+                    setState(() {
+                      _currentStep = SendMoneyStep.pin;
+                    });
+                  } : null, text: "Continue"),
+                  if(_currentStep == SendMoneyStep.pin)PreronButton(onPressed: canContinueFromPin ? (){
+                    showModalBottomSheet<bool>(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => SendMoneyConfirmBottomSheet(
+                          phoneNumber: _phoneNumber,
+                          amount: _amount,
+                          ref: _reference,
+                          pin: _pin,
+                        ),
+                        isDismissible: false,
+                        enableDrag: false
+                    );
+                  } : null, text: "Continue"),
+                  SizedBox(height: 16,)
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }

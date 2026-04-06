@@ -20,110 +20,112 @@ class _CashoutSuccessBottomSheetState extends State<CashoutSuccessBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle bar
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          const SizedBox(height: 28),
+            const SizedBox(height: 28),
 
-          // Success icon
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              color: Color(0xFFECFAF3),
-              shape: BoxShape.circle,
+            // Success icon
+            Container(
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                color: Color(0xFFECFAF3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Color(0xFF1DB95A),
+                size: 30,
+              ),
             ),
-            child: const Icon(
-              Icons.check_rounded,
-              color: Color(0xFF1DB95A),
-              size: 30,
-            ),
-          ),
-          const SizedBox(height: 14),
+            const SizedBox(height: 14),
 
-          const Text(
-            'Cash Out Successful',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
+            const Text(
+              'Cash Out Successful',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
+            const SizedBox(height: 4),
 
-          // Amount
-          Text(
-            '৳ ${_data.amount}',
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1A1A1A),
+            // Amount
+            Text(
+              '৳ ${_data.amount}',
+              style: const TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // Details card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F8F8),
-              borderRadius: BorderRadius.circular(14),
+            // Details card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F8F8),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                children: [
+                  _DetailRow(label: 'Agent Number', value: _data.agentNumber),
+                  const _Divider(),
+                  _DetailRow(label: 'Fee', value: '৳ ${_data.fee}'),
+                  const _Divider(),
+                  _DetailRow(label: 'Balance', value: '৳ ${_data.balance}'),
+                  const _Divider(),
+                  _TrxRow(trxId: _data.trxId),
+                  const _Divider(),
+                  _DetailRow(label: 'Date & Time', value: _data.dateTime),
+                ],
+              ),
             ),
-            child: Column(
-              children: [
-                _DetailRow(label: 'Agent Number', value: _data.agentNumber),
-                const _Divider(),
-                _DetailRow(label: 'Fee', value: '৳ ${_data.fee}'),
-                const _Divider(),
-                _DetailRow(label: 'Balance', value: '৳ ${_data.balance}'),
-                const _Divider(),
-                _TrxRow(trxId: _data.trxId),
-                const _Divider(),
-                _DetailRow(label: 'Date & Time', value: _data.dateTime),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          // Back to Home
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-              },
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.grey.shade100,
-                foregroundColor: const Color(0xFF1A1A1A),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            // Back to Home
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.grey.shade100,
+                  foregroundColor: const Color(0xFF1A1A1A),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Back to Home',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                 ),
               ),
-              child: const Text(
-                'Back to Home',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
