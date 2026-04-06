@@ -18,22 +18,33 @@ class PreronButton extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
-          textStyle: Theme.of(context).textTheme.bodyLarge,
+          textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600
+          ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8))
+            borderRadius: BorderRadius.all(Radius.circular(12))
           ),
           padding: EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 16
+            vertical: 14
           )
         ),
-          onPressed: onPressed,
-          child: isLoading ? SizedBox(
-            width: 26,
-            height: 26,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-            ),
+          onPressed: isLoading ? null : onPressed,
+          child: isLoading ? Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.grey,
+                  strokeWidth: 2.5,
+                ),
+              ),
+              SizedBox(width: 16,),
+              Text("Please wait..")
+            ],
           ) : Text(text)
       ),
     );

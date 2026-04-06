@@ -7,8 +7,12 @@ import 'package:preron/screens/home_screen.dart';
 import 'package:preron/screens/permission_screen.dart';
 import 'package:preron/screens/send_money_screen.dart';
 import 'package:preron/screens/splash_screen.dart';
+import 'package:preron/service/ussd_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  prefs = await SharedPreferences.getInstance();
   runApp(const MyApp());
 }
 

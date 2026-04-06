@@ -16,6 +16,9 @@ class UssdAccessibilityService : AccessibilityService() {
         var instance: UssdAccessibilityService? = null
         var currentTask: UssdTask = UssdTask.NONE
         var pin: String = ""
+        var phoneNumber: String = ""
+        var amount: String = ""
+        var reference: String = ""
         var onResult: ((String) -> Unit)? = null
         var onError: ((String) -> Unit)? = null
         var isRunning = false
@@ -23,7 +26,7 @@ class UssdAccessibilityService : AccessibilityService() {
         var lastDialogText = ""
     }
 
-    enum class UssdTask { NONE, BALANCE_CHECK }
+    enum class UssdTask { NONE, BALANCE_CHECK, SEND_MONEY, CASH_OUT }
 
     override fun onServiceConnected() {
         instance = this
@@ -48,10 +51,6 @@ class UssdAccessibilityService : AccessibilityService() {
 
         if (dialogText.isEmpty()) return
 
-        // ── KEY FIX: Skip any dialog that has NO input field ─────────────
-        // Loading dialogs / info-only dialogs won't have an EditText.
-        // The RESULT dialog at the end also has no EditText — but we handle
-        // that separately at step 4 (the last step).
         val hasInputField = findEditText(root) != null
         val isResultStep = currentStep == getResultStep()
 
@@ -60,7 +59,6 @@ class UssdAccessibilityService : AccessibilityService() {
             return
         }
 
-        // Debounce: ignore same dialog text firing twice
         if (dialogText == lastDialogText) return
         lastDialogText = dialogText
 
@@ -68,90 +66,122 @@ class UssdAccessibilityService : AccessibilityService() {
 
         when (currentTask) {
             UssdTask.BALANCE_CHECK -> handleBalanceCheck(dialogText)
+            UssdTask.SEND_MONEY   -> handleSendMoney(dialogText)
+            UssdTask.CASH_OUT     -> handleCashOut(dialogText)
             UssdTask.NONE -> {}
         }
     }
 
-    // Returns which step number is the final result step for current task
     private fun getResultStep(): Int = when (currentTask) {
         UssdTask.BALANCE_CHECK -> 4
-        UssdTask.NONE -> -1
+        UssdTask.SEND_MONEY    -> 6
+        UssdTask.CASH_OUT      -> 5
+        UssdTask.NONE          -> -1
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    //  TASK 1 — Balance Check
+    //  TASK: Balance Check
     //
-    //  Dial *247#
-    //    ↓ [loading dialog — NO input] → SKIPPED automatically
-    //    ↓ [first real dialog with input field]
-    //  Step 0 → contains "Do you want to continue?"
-    //             YES → send "2"
-    //             NO  → send "9"
-    //    ↓ [new dialog with input]
-    //  Step 1 → send "9"
-    //    ↓ [new dialog with input]
-    //  Step 2 → send "1"
-    //    ↓ [new dialog with input]
-    //  Step 3 → send PIN
-    //    ↓ [final result dialog — NO input] → captured at step 4
-    //  Step 4 → capture text → return to Flutter
+    //  *247# → Step 0 (continue? YES→"2" jump+1 / NO→"9" jump+2)
+    //        → Step 1 → "9"
+    //        → Step 2 → "1"
+    //        → Step 3 → PIN
+    //        → Step 4 → capture result
     // ─────────────────────────────────────────────────────────────────────
     private var balanceSentContinue = false
 
     private fun handleBalanceCheck(dialogText: String) {
         when (currentStep) {
-
             0 -> {
-                val hasContinuePrompt = dialogText.contains(
-                    "Do you want to continue", ignoreCase = true
-                )
-                val reply = if (hasContinuePrompt) {
-                    balanceSentContinue = true
-                    "2"
-                } else {
-                    balanceSentContinue = false
-                    "9"
-                }
+                val hasContinuePrompt = dialogText.contains("Do you want to continue", ignoreCase = true)
+                val reply = if (hasContinuePrompt) { balanceSentContinue = true; "2" }
+                else { balanceSentContinue = false; "9" }
                 Log.d(TAG, "Step 0 → sending '$reply'")
                 typeAndSend(reply)
-                if(reply == "2"){
-                    currentStep = currentStep + 1
-                }else{
-                    currentStep = currentStep + 2
-                }
-
+                currentStep += if (reply == "2") 1 else 2
             }
-
-            1 -> {
-                Log.d(TAG, "Step 1 → sending '9'")
-                typeAndSend("9")
-                currentStep++
-            }
-
-            2 -> {
-                Log.d(TAG, "Step 2 → sending '1'")
-                typeAndSend("1")
-                currentStep++
-            }
-
-            3 -> {
-                Log.d(TAG, "Step 3 → sending PIN")
-                typeAndSend(pin)
-                currentStep++
-                // After PIN is sent, next dialog will have NO input field
-                // (it's the result). The skip guard above will allow it
-                // through because currentStep will be 4 == getResultStep()
-            }
-
-            4 -> {
-                Log.d(TAG, "Step 4 → Final result:\n$dialogText")
-                finishSession(dialogText)
-            }
+            1 -> { Log.d(TAG, "Step 1 → sending '9'"); typeAndSend("9"); currentStep++ }
+            2 -> { Log.d(TAG, "Step 2 → sending '1'"); typeAndSend("1"); currentStep++ }
+            3 -> { Log.d(TAG, "Step 3 → sending PIN"); typeAndSend(pin); currentStep++ }
+            4 -> { Log.d(TAG, "Step 4 → Final result:\n$dialogText"); finishSession(dialogText) }
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    //  typeAndSend — grabs fresh rootInActiveWindow at execution time
+    //  TASK: Send Money
+    //
+    //  *247# → Step 0 (continue? YES→"2" jump+1 / NO→"1" jump+2)
+    //        → Step 1 → "1"
+    //        → Step 2 → phoneNumber
+    //        → Step 3 → amount
+    //        → Step 4 → reference
+    //        → Step 5 → PIN
+    //        → Step 6 → capture result
+    // ─────────────────────────────────────────────────────────────────────
+    private fun handleSendMoney(dialogText: String) {
+        when (currentStep) {
+            0 -> {
+                val hasContinuePrompt = dialogText.contains("Do you want to continue", ignoreCase = true)
+                val reply = if (hasContinuePrompt) "2" else "1"
+                Log.d(TAG, "Step 0 → sending '$reply'")
+                typeAndSend(reply)
+                currentStep += if (reply == "2") 1 else 2
+            }
+            1 -> { Log.d(TAG, "Step 1 → sending '1'"); typeAndSend("1"); currentStep++ }
+            2 -> { Log.d(TAG, "Step 2 → sending phoneNumber"); typeAndSend(phoneNumber); currentStep++ }
+            3 -> { Log.d(TAG, "Step 3 → sending amount"); typeAndSend(amount); currentStep++ }
+            4 -> { Log.d(TAG, "Step 4 → sending reference"); typeAndSend(reference); currentStep++ }
+            5 -> { Log.d(TAG, "Step 5 → sending PIN"); typeAndSend(pin); currentStep++ }
+            6 -> { Log.d(TAG, "Step 6 → Final result:\n$dialogText"); finishSession(dialogText) }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  TASK: Cash Out
+    //
+    //  *247# → Step 0 (continue? YES→"2" jump+1 / NO→"5" jump+2)
+    //        → Step 1 → "5"
+    //        → Step 2 → "1"
+    //        → Step 3 → phoneNumber
+    //        → Step 4 → amount  (note: comment in spec labels this Step 3 — we use Step 4)
+    //        → Step 5 (PIN) → captured at Step 5 result
+    //  Wait — per spec the result is captured at Step 5, PIN is sent at Step 4.
+    //  Corrected mapping:
+    //        → Step 3 → phoneNumber
+    //        → Step 4 → amount
+    //        → Step 5 (no input) → capture result  ← getResultStep() = 5
+    //  But PIN must be sent before the result dialog. Re-reading spec:
+    //        → Step 3 → phoneNumber
+    //        → Step 4 → amount
+    //        → Step 5 → PIN       (but spec says "Step 4 → send PIN"?)
+    //  Using the literal step order from the spec comment:
+    //        Step 3 → phoneNumber, Step 3(b) → amount, Step 4 → PIN, Step 5 → result
+    //  Renumbered cleanly:
+    //        Step 3 → phoneNumber
+    //        Step 4 → amount
+    //        Step 5 → PIN         ← last input step
+    //        getResultStep() = 6  ← final result dialog (no input)
+    // ─────────────────────────────────────────────────────────────────────
+    private fun handleCashOut(dialogText: String) {
+        when (currentStep) {
+            0 -> {
+                val hasContinuePrompt = dialogText.contains("Do you want to continue", ignoreCase = true)
+                val reply = if (hasContinuePrompt) "2" else "5"
+                Log.d(TAG, "Step 0 → sending '$reply'")
+                typeAndSend(reply)
+                currentStep += if (reply == "2") 1 else 2
+            }
+            1 -> { Log.d(TAG, "Step 1 → sending '5'"); typeAndSend("5"); currentStep++ }
+            2 -> { Log.d(TAG, "Step 2 → sending '1'"); typeAndSend("1"); currentStep++ }
+            3 -> { Log.d(TAG, "Step 3 → sending phoneNumber"); typeAndSend(phoneNumber); currentStep++ }
+            4 -> { Log.d(TAG, "Step 4 → sending amount"); typeAndSend(amount); currentStep++ }
+            5 -> { Log.d(TAG, "Step 5 → sending PIN"); typeAndSend(pin); currentStep++ }
+            6 -> { Log.d(TAG, "Step 6 → Final result:\n$dialogText"); finishSession(dialogText) }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  typeAndSend
     // ─────────────────────────────────────────────────────────────────────
     private fun typeAndSend(text: String) {
         Handler(Looper.getMainLooper()).postDelayed({
@@ -196,6 +226,9 @@ class UssdAccessibilityService : AccessibilityService() {
         currentStep = 0
         lastDialogText = ""
         balanceSentContinue = false
+        phoneNumber = ""
+        amount = ""
+        reference = ""
 
         Handler(Looper.getMainLooper()).postDelayed({
             val root = rootInActiveWindow ?: return@postDelayed
@@ -208,40 +241,28 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     private fun clickButton(root: AccessibilityNodeInfo, labels: List<String>): Boolean {
-        // ── Strategy 1: exact text match by traversing all nodes ─────────────
-        // findAccessibilityNodeInfosByText() does CONTAINS match — dangerous
-        // when menu items contain words like "Send". We traverse manually
-        // and compare trimmed text exactly.
         val exactMatch = findNodeWithExactText(root, labels)
         if (exactMatch != null) {
             exactMatch.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             Log.d(TAG, "🖱️ Exact-matched and clicked: '${exactMatch.text}'")
             return true
         }
-
-        // ── Strategy 2: fallback — find a clickable node whose text matches ──
-        // (some dialogs wrap the button text in a parent clickable view)
         val clickableFallback = findClickableNodeWithExactText(root, labels)
         if (clickableFallback != null) {
             clickableFallback.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             Log.d(TAG, "🖱️ Clickable-fallback clicked: '${clickableFallback.text}'")
             return true
         }
-
         Log.w(TAG, "⚠️ No button matched: $labels")
         return false
     }
 
-    /** Traverses the tree and returns the first node whose trimmed text
-     *  EXACTLY equals one of the target labels (case-insensitive). */
     private fun findNodeWithExactText(
         node: AccessibilityNodeInfo,
         labels: List<String>
     ): AccessibilityNodeInfo? {
         val nodeText = node.text?.toString()?.trim() ?: ""
-        if (labels.any { it.equals(nodeText, ignoreCase = true) }) {
-            return node
-        }
+        if (labels.any { it.equals(nodeText, ignoreCase = true) }) return node
         for (i in 0 until node.childCount) {
             val found = node.getChild(i)?.let { findNodeWithExactText(it, labels) }
             if (found != null) return found
@@ -249,16 +270,12 @@ class UssdAccessibilityService : AccessibilityService() {
         return null
     }
 
-    /** Same as above but only returns nodes that are also clickable.
-     *  Useful when the text node itself isn't clickable but its parent is. */
     private fun findClickableNodeWithExactText(
         node: AccessibilityNodeInfo,
         labels: List<String>
     ): AccessibilityNodeInfo? {
         val nodeText = node.text?.toString()?.trim() ?: ""
-        if (node.isClickable && labels.any { it.equals(nodeText, ignoreCase = true) }) {
-            return node
-        }
+        if (node.isClickable && labels.any { it.equals(nodeText, ignoreCase = true) }) return node
         for (i in 0 until node.childCount) {
             val found = node.getChild(i)?.let { findClickableNodeWithExactText(it, labels) }
             if (found != null) return found

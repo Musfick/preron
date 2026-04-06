@@ -34,7 +34,7 @@ class PermissionCard extends StatelessWidget {
             ),
             padding: EdgeInsets.all(8),
             child: Icon(
-              iconData,
+              isGranted ? Icons.check : iconData,
               color: isGranted ? Colors.white : Colors.grey,
               size: 24,
             ),

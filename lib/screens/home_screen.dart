@@ -24,9 +24,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> loadSimCards() async {
     try{
       final simCards = await UssdService.getSimCards();
+      final selectedSim = await UssdService.getSelectedSim();
+      print(selectedSim);
       if(mounted){
         setState(() {
           _simCards = simCards;
+          _selectedSimCard = selectedSim;
         });
       }
     }catch(e){
@@ -91,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             setState(() {
                               _selectedSimCard = _simCards[index];
                             });
+                            UssdService.setSelectedSim(_simCards[index]);
                           }
                         },
                       ),
@@ -116,14 +120,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(height: 16,),
                 HomeAction(
                   title: "bkash Send Money",
-                  onAction: (){},
+                  onAction: (){
+                    Navigator.pushNamed(context, '/send-money');
+                  },
                 ),
                 SizedBox(height: 16,),
                 HomeAction(
                   title: "bksah Balance",
                   onAction: (){
                     Navigator.pushNamed(context, '/balance');
-
                   },
                 )
               ],

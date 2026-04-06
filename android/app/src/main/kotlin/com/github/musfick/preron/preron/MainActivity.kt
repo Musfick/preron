@@ -58,18 +58,6 @@ class MainActivity : FlutterActivity() {
                     }
 
                     // ── Get SIM list ───────────────────────────────────────
-                    // Returns: List<Map<String, dynamic>>
-                    // [
-                    //   {
-                    //     "simIndex": 0,
-                    //     "subscriptionId": 1,
-                    //     "displayName": "SIM 1",
-                    //     "carrierName": "Grameenphone",
-                    //     "phoneNumber": "+8801XXXXXXXXX",
-                    //     "slotIndex": 0,
-                    //     "isActive": true
-                    //   }, ...
-                    // ]
                     "getSimCards" -> {
                         if (!hasPhoneStatePermission()) {
                             requestPhoneStatePermission()
@@ -93,7 +81,6 @@ class MainActivity : FlutterActivity() {
                             return@setMethodCallHandler
                         }
 
-                        // Configure accessibility service
                         UssdAccessibilityService.apply {
                             currentTask  = UssdAccessibilityService.UssdTask.BALANCE_CHECK
                             this.pin     = pin
@@ -126,6 +113,109 @@ class MainActivity : FlutterActivity() {
                         Log.d(TAG, "Balance check → SIM index $simIndex, PIN=****")
                     }
 
+                    // ── Send Money ─────────────────────────────────────────
+                    // Args: { "pin": "1234", "simIndex": 0, "phoneNumber": "01XXXXXXXXX",
+                    //         "amount": "500", "reference": "rent" }
+                    "sendMoney" -> {
+                        val pin         = call.argument<String>("pin") ?: ""
+                        val simIndex    = call.argument<Int>("simIndex") ?: 0
+                        val phoneNumber = call.argument<String>("phoneNumber") ?: ""
+                        val amount      = call.argument<String>("amount") ?: ""
+                        val reference   = call.argument<String>("reference") ?: ""
+
+                        if (!ensurePermissions(result)) return@setMethodCallHandler
+                        if (!isAccessibilityServiceEnabled()) {
+                            result.error("NO_ACCESSIBILITY",
+                                "Enable the USSD accessibility service first", null)
+                            return@setMethodCallHandler
+                        }
+
+                        UssdAccessibilityService.apply {
+                            currentTask        = UssdAccessibilityService.UssdTask.SEND_MONEY
+                            this.pin           = pin
+                            this.phoneNumber   = phoneNumber
+                            this.amount        = amount
+                            this.reference     = reference
+                            isRunning          = true
+                            currentStep        = 0
+                            lastDialogText     = ""
+                            onResult = { dialogText ->
+                                runOnUiThread {
+                                    eventSink?.success(mapOf(
+                                        "task"   to "sendMoney",
+                                        "status" to "success",
+                                        "result" to dialogText
+                                    ))
+                                }
+                                result.success(dialogText)
+                            }
+                            onError = { errorMsg ->
+                                runOnUiThread {
+                                    eventSink?.success(mapOf(
+                                        "task"   to "sendMoney",
+                                        "status" to "error",
+                                        "result" to errorMsg
+                                    ))
+                                }
+                                result.error("USSD_ERROR", errorMsg, null)
+                            }
+                        }
+
+                        dialUssdOnSim("*247#", simIndex)
+                        Log.d(TAG, "Send money → SIM index $simIndex, to=$phoneNumber, amount=$amount")
+                    }
+
+                    // ── Cash Out ───────────────────────────────────────────
+                    // Args: { "pin": "1234", "simIndex": 0,
+                    //         "phoneNumber": "01XXXXXXXXX", "amount": "500" }
+                    "cashOut" -> {
+                        val pin         = call.argument<String>("pin") ?: ""
+                        val simIndex    = call.argument<Int>("simIndex") ?: 0
+                        val phoneNumber = call.argument<String>("phoneNumber") ?: ""
+                        val amount      = call.argument<String>("amount") ?: ""
+
+                        if (!ensurePermissions(result)) return@setMethodCallHandler
+                        if (!isAccessibilityServiceEnabled()) {
+                            result.error("NO_ACCESSIBILITY",
+                                "Enable the USSD accessibility service first", null)
+                            return@setMethodCallHandler
+                        }
+
+                        UssdAccessibilityService.apply {
+                            currentTask        = UssdAccessibilityService.UssdTask.CASH_OUT
+                            this.pin           = pin
+                            this.phoneNumber   = phoneNumber
+                            this.amount        = amount
+                            this.reference     = ""
+                            isRunning          = true
+                            currentStep        = 0
+                            lastDialogText     = ""
+                            onResult = { dialogText ->
+                                runOnUiThread {
+                                    eventSink?.success(mapOf(
+                                        "task"   to "cashOut",
+                                        "status" to "success",
+                                        "result" to dialogText
+                                    ))
+                                }
+                                result.success(dialogText)
+                            }
+                            onError = { errorMsg ->
+                                runOnUiThread {
+                                    eventSink?.success(mapOf(
+                                        "task"   to "cashOut",
+                                        "status" to "error",
+                                        "result" to errorMsg
+                                    ))
+                                }
+                                result.error("USSD_ERROR", errorMsg, null)
+                            }
+                        }
+
+                        dialUssdOnSim("*247#", simIndex)
+                        Log.d(TAG, "Cash out → SIM index $simIndex, to=$phoneNumber, amount=$amount")
+                    }
+
                     else -> result.notImplemented()
                 }
             }
@@ -138,7 +228,6 @@ class MainActivity : FlutterActivity() {
         val simList = mutableListOf<Map<String, Any?>>()
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP_MR1) {
-            // Fallback for very old devices
             simList.add(mapOf(
                 "simIndex"       to 0,
                 "subscriptionId" to 0,
@@ -161,21 +250,17 @@ class MainActivity : FlutterActivity() {
             subscriptionManager.activeSubscriptionInfoList
         } else null
 
-        if (subscriptions.isNullOrEmpty()) {
-            // No subscriptions found — return empty list
-            return simList
-        }
+        if (subscriptions.isNullOrEmpty()) return simList
 
         subscriptions.forEachIndexed { index, info ->
             val phoneNumber = getPhoneNumber(info.subscriptionId)
-
             simList.add(mapOf(
-                "simIndex"       to index,                        // 0-based index for your use
-                "subscriptionId" to info.subscriptionId,          // Android internal ID
+                "simIndex"       to index,
+                "subscriptionId" to info.subscriptionId,
                 "displayName"    to (info.displayName?.toString() ?: "SIM ${index + 1}"),
                 "carrierName"    to (info.carrierName?.toString() ?: "Unknown"),
                 "phoneNumber"    to (phoneNumber ?: ""),
-                "slotIndex"      to info.simSlotIndex,            // Physical SIM slot
+                "slotIndex"      to info.simSlotIndex,
                 "isActive"       to true
             ))
         }
@@ -186,22 +271,19 @@ class MainActivity : FlutterActivity() {
     private fun getPhoneNumber(subscriptionId: Int): String? {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // Android 13+
                 if (ActivityCompat.checkSelfPermission(
                         this, Manifest.permission.READ_PHONE_NUMBERS
                     ) == PackageManager.PERMISSION_GRANTED
                 ) {
                     val tm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
-                    val tmForSub = tm.createForSubscriptionId(subscriptionId)
-                    tmForSub.line1Number
+                    tm.createForSubscriptionId(subscriptionId).line1Number
                 } else null
             } else {
                 val tm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
-                val tmForSub = tm.createForSubscriptionId(subscriptionId)
                 if (ActivityCompat.checkSelfPermission(
                         this, Manifest.permission.READ_PHONE_STATE
                     ) == PackageManager.PERMISSION_GRANTED
-                ) tmForSub.line1Number else null
+                ) tm.createForSubscriptionId(subscriptionId).line1Number else null
             }
         } catch (e: Exception) {
             Log.w(TAG, "Could not get phone number for sub $subscriptionId: ${e.message}")
@@ -215,7 +297,6 @@ class MainActivity : FlutterActivity() {
     private fun dialUssdOnSim(ussdCode: String, simIndex: Int) {
         val encoded = Uri.encode(ussdCode)
 
-        // Try to dial on specific SIM slot using TelecomManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
                 val telecomManager = getSystemService(TELECOM_SERVICE) as TelecomManager
@@ -237,7 +318,6 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        // Fallback: default SIM
         Log.w(TAG, "Falling back to default SIM dial")
         startActivity(Intent(Intent.ACTION_CALL, Uri.parse("tel:$encoded")))
     }
@@ -258,7 +338,6 @@ class MainActivity : FlutterActivity() {
         CALL_PHONE_REQUEST
     )
 
-    /** Returns false if permissions missing (already reported error to result) */
     private fun ensurePermissions(result: MethodChannel.Result): Boolean {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
             != PackageManager.PERMISSION_GRANTED

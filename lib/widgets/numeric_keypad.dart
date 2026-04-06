@@ -15,20 +15,17 @@ class NumericKeypad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        children: [
-          _buildKeyRow(['1', '2', '3']),
-          _buildKeyRow(['4', '5', '6']),
-          _buildKeyRow(['7', '8', '9']),
-          _buildKeyRow([
-            if (showDecimal) '.' else '',
-            '0',
-            if (showBackspace) 'backspace' else ''
-          ]),
-        ],
-      ),
+    return Column(
+      children: [
+        _buildKeyRow(['1', '2', '3']),
+        _buildKeyRow(['4', '5', '6']),
+        _buildKeyRow(['7', '8', '9']),
+        _buildKeyRow([
+          if (showDecimal) '.' else '',
+          '0',
+          if (showBackspace) 'backspace' else ''
+        ]),
+      ],
     );
   }
 

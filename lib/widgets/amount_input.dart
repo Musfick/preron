@@ -17,15 +17,12 @@ class AmountInput extends StatelessWidget {
   String _formatAmount(String value) {
     if (value.isEmpty) return '0';
 
-    // Remove non-digit characters except decimal
     String cleanValue = value.replaceAll(RegExp(r'[^\d.]'), '');
 
-    // Handle decimal
     List<String> parts = cleanValue.split('.');
     String intPart = parts[0];
     String decimalPart = parts.length > 1 ? parts[1] : '';
 
-    // Limit digits
     if (intPart.length > maxDigits) {
       intPart = intPart.substring(0, maxDigits);
     }
@@ -33,11 +30,13 @@ class AmountInput extends StatelessWidget {
       decimalPart = decimalPart.substring(0, 2);
     }
 
-    // Add commas to integer part
     intPart = _addCommas(intPart);
 
-    return decimalPart.isNotEmpty ? '$intPart.$decimalPart' : intPart;
+    if (decimalPart.isNotEmpty) return '$intPart.$decimalPart';
+    if (value.endsWith('.')) return '$intPart.';  // ← preserve trailing dot
+    return intPart;
   }
+
 
   String _addCommas(String value) {
     return value.replaceAllMapped(
