@@ -107,13 +107,13 @@ class UssdOverlayService : Service() {
         // ── outer card ───────────────────────────────────────────────────
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#FF121212"))
+            setBackgroundColor(Color.parseColor("#FFFFFFFF"))
         }
 
         // ── title bar ────────────────────────────────────────────────────
         titleBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#1E1E1E"))
+            setBackgroundColor(Color.parseColor("#F5F5F5"))
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12f), dp(8f), dp(8f), dp(8f))
         }
@@ -129,7 +129,7 @@ class UssdOverlayService : Service() {
 
         val title = TextView(this).apply {
             text = "USSD SESSION"
-            setTextColor(Color.parseColor("#B0BEC5"))
+            setTextColor(Color.parseColor("#37474F"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
             typeface = Typeface.create("monospace", Typeface.BOLD)
             letterSpacing = 0.15f
@@ -138,7 +138,7 @@ class UssdOverlayService : Service() {
 
         badgeText = TextView(this).apply {
             text = "0 events"
-            setTextColor(Color.parseColor("#546E7A"))
+            setTextColor(Color.parseColor("#607D8B"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             typeface = Typeface.create("monospace", Typeface.NORMAL)
             setPadding(dp(0f), dp(0f), dp(8f), dp(0f))
@@ -146,7 +146,7 @@ class UssdOverlayService : Service() {
 
         val closeBtn = TextView(this).apply {
             text = "✕"
-            setTextColor(Color.parseColor("#78909C"))
+            setTextColor(Color.parseColor("#455A64"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setPadding(dp(10f), dp(6f), dp(10f), dp(6f))
             setOnClickListener { stopSelf() }
@@ -154,7 +154,7 @@ class UssdOverlayService : Service() {
 
         val minimizeBtn = TextView(this).apply {
             text = "—"
-            setTextColor(Color.parseColor("#78909C"))
+            setTextColor(Color.parseColor("#455A64"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setPadding(dp(4f), dp(6f), dp(4f), dp(6f))
             setOnClickListener { toggleMinimize(card) }
@@ -184,14 +184,14 @@ class UssdOverlayService : Service() {
         // ── bottom bar ───────────────────────────────────────────────────
         val bottomBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#0D0D0D"))
+            setBackgroundColor(Color.parseColor("#FAFAFA"))
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12f), dp(6f), dp(12f), dp(6f))
         }
 
         val clearBtn = TextView(this).apply {
             text = "CLEAR"
-            setTextColor(Color.parseColor("#455A64"))
+            setTextColor(Color.parseColor("#37474F"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             typeface = Typeface.create("monospace", Typeface.BOLD)
             letterSpacing = 0.1f
@@ -236,6 +236,8 @@ class UssdOverlayService : Service() {
             gravity = Gravity.TOP or Gravity.START
         }
 
+        overlayRoot.setBackgroundColor(Color.parseColor("#FFFFFFFF"))
+
         wm.addView(overlayRoot, params)
     }
 
@@ -249,7 +251,7 @@ class UssdOverlayService : Service() {
 
             val isPrompt = type.equals("PROMPT", ignoreCase = true)
             val accentColor = if (isPrompt) Color.parseColor("#FF9800") else Color.parseColor("#2196F3")
-            val badgeBg     = if (isPrompt) Color.parseColor("#2A1A00") else Color.parseColor("#001A3A")
+            val badgeBg     = if (isPrompt) Color.parseColor("#FFF3E0") else Color.parseColor("#E3F2FD")
 
             // Row container
             val row = LinearLayout(this).apply {
@@ -269,7 +271,7 @@ class UssdOverlayService : Service() {
             // Content
             val content = TextView(this).apply {
                 this.text = text.trim()
-                setTextColor(if (isPrompt) Color.parseColor("#CFD8DC") else Color.parseColor("#FFFFFF"))
+                setTextColor(Color.parseColor("#263238"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
                 typeface = Typeface.create("monospace", Typeface.NORMAL)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -298,7 +300,7 @@ class UssdOverlayService : Service() {
 
             // Divider
             val divider = View(this).apply {
-                setBackgroundColor(Color.parseColor("#1A2A2A"))
+                setBackgroundColor(Color.parseColor("#E0E0E0"))
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, dp(0.5f)
                 ).also { it.setMargins(dp(8f), 0, dp(8f), 0) }
