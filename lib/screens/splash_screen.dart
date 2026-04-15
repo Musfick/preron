@@ -22,9 +22,11 @@ class _SplashScreenState extends State<SplashScreen> {
       final callStatus = await Permission.phone.status;
       final bool accessibilityStatus =
       await UssdService.checkAccessibility();
+      final bool overlayStatus =
+      await UssdService.checkOverlayPermission();
 
       if (mounted) {
-        if(callStatus.isGranted && accessibilityStatus){
+        if(callStatus.isGranted && accessibilityStatus && overlayStatus){
           Navigator.pushReplacementNamed(context, '/home');
         }else{
           Navigator.pushReplacementNamed(context, '/permission');

@@ -36,11 +36,13 @@ class _BalanceScreenState extends State<BalanceScreen> {
           _isLoading = true;
         });
         final selectedSim = await UssdService.getSelectedSim();
+        UssdService.startOverlay();
         final response = await UssdService.checkBalance(pin: _pin, simIndex: selectedSim["simIndex"])
             .timeout(
           const Duration(seconds: 45),
           onTimeout: () => throw Exception('Session timed out after 45s'),
         );
+        UssdService.stopOverlay();
         if(mounted){
           showModalBottomSheet(context: context, builder: (BuildContext ctx) {
             return BalanceBottomSheet(response: response);
@@ -52,12 +54,14 @@ class _BalanceScreenState extends State<BalanceScreen> {
           });
         }
       }catch(e){
+        UssdService.stopOverlay();
+
         if(mounted){
           setState(() {
             _isLoading = false;
           });
         }
-        debugPrint(e.toString());
+        debugPrint("Hello"+e.toString());
       }
     }
   }

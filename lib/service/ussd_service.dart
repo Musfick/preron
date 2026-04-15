@@ -7,6 +7,29 @@ class UssdService {
   static const _method = MethodChannel('com.github.musfick.preron.preron/ussd');
   static const _events = EventChannel('com.github.musfick.preron.preron/ussd_events');
 
+
+  static Stream<Map<String, dynamic>>? _eventStream;
+
+  /// Stream of live USSD task events from the native side.
+  static Stream<Map<String, dynamic>> get events {
+    _eventStream ??= _events
+        .receiveBroadcastStream()
+        .map((e) => Map<String, dynamic>.from(e as Map));
+    return _eventStream!;
+  }
+
+  // ── Overlay permission ─────────────────────────────────────────────────
+  static Future<bool> checkOverlayPermission() async =>
+      await _method.invokeMethod<bool>('checkOverlayPermission') ?? false;
+
+  static Future<void> requestOverlayPermission() =>
+      _method.invokeMethod('requestOverlayPermission');
+
+  // ── Overlay service lifecycle ──────────────────────────────────────────
+  static Future<void> startOverlay() => _method.invokeMethod('startOverlay');
+  static Future<void> stopOverlay()  => _method.invokeMethod('stopOverlay');
+  static Future<void> clearOverlayLogs() => _method.invokeMethod('clearOverlayLogs');
+
   static Future<Map<String, dynamic>> getSelectedSim() async {
     final result = prefs.getString('selected_sim_carrier_name');
     final sims = await getSimCards();

@@ -24,6 +24,18 @@ class UssdAccessibilityService : AccessibilityService() {
         var isRunning = false
         var currentStep = 0
         var lastDialogText = ""
+        var seenInitialLoadingDialog = false
+
+        // ── Overlay helper ────────────────────────────────────────────────
+        /** Posts a PROMPT entry to the live overlay (no-op if overlay not running). */
+        private fun logPrompt(text: String) {
+            UssdOverlayService.addLog("PROMPT", text)
+        }
+
+        /** Posts an INPUT entry to the live overlay. Masks PIN values. */
+        private fun logInput(text: String, mask: Boolean = false) {
+            UssdOverlayService.addLog("INPUT", if (mask) "•".repeat(text.length) else text)
+        }
     }
 
     enum class UssdTask { NONE, BALANCE_CHECK, SEND_MONEY, CASH_OUT }
@@ -54,6 +66,19 @@ class UssdAccessibilityService : AccessibilityService() {
         val hasInputField = findEditText(root) != null
         val isResultStep = currentStep == getResultStep()
 
+        // Ignore transient loading dialogs before first actionable prompt
+        if (!seenInitialLoadingDialog && !hasInputField && !isResultStep) {
+            seenInitialLoadingDialog = true
+            Log.d(TAG, "⏳ Initial loading dialog detected: $dialogText")
+            return
+        }
+
+        // If loading was shown, first actionable dialog must have an input field
+        if (seenInitialLoadingDialog && currentStep == 0 && !hasInputField) {
+            failSession(dialogText)
+            return
+        }
+
         if (!hasInputField && !isResultStep) {
             Log.d(TAG, "⏭️ Skipping dialog (no input field, not result step): $dialogText")
             return
@@ -64,10 +89,13 @@ class UssdAccessibilityService : AccessibilityService() {
 
         Log.d(TAG, "📱 New dialog [step=$currentStep, hasInput=$hasInputField]:\n$dialogText")
 
+        // Log the USSD prompt to the overlay
+        logPrompt(dialogText)
+
         when (currentTask) {
-            UssdTask.BALANCE_CHECK -> handleBalanceCheck(dialogText)
-            UssdTask.SEND_MONEY   -> handleSendMoney(dialogText)
-            UssdTask.CASH_OUT     -> handleCashOut(dialogText)
+            UssdTask.BALANCE_CHECK -> handleBalanceCheck(dialogText, hasInputField)
+            UssdTask.SEND_MONEY    -> handleSendMoney(dialogText, hasInputField)
+            UssdTask.CASH_OUT      -> handleCashOut(dialogText, hasInputField)
             UssdTask.NONE -> {}
         }
     }
@@ -75,108 +103,98 @@ class UssdAccessibilityService : AccessibilityService() {
     private fun getResultStep(): Int = when (currentTask) {
         UssdTask.BALANCE_CHECK -> 4
         UssdTask.SEND_MONEY    -> 6
-        UssdTask.CASH_OUT      -> 5
+        UssdTask.CASH_OUT      -> 6
         UssdTask.NONE          -> -1
     }
 
     // ─────────────────────────────────────────────────────────────────────
     //  TASK: Balance Check
-    //
-    //  *247# → Step 0 (continue? YES→"2" jump+1 / NO→"9" jump+2)
-    //        → Step 1 → "9"
-    //        → Step 2 → "1"
-    //        → Step 3 → PIN
-    //        → Step 4 → capture result
     // ─────────────────────────────────────────────────────────────────────
     private var balanceSentContinue = false
 
-    private fun handleBalanceCheck(dialogText: String) {
+    private fun handleBalanceCheck(dialogText: String, hasInputField: Boolean) {
         when (currentStep) {
             0 -> {
                 val hasContinuePrompt = dialogText.contains("Do you want to continue", ignoreCase = true)
                 val reply = if (hasContinuePrompt) { balanceSentContinue = true; "2" }
                 else { balanceSentContinue = false; "9" }
                 Log.d(TAG, "Step 0 → sending '$reply'")
+                logInput(reply)
                 typeAndSend(reply)
                 currentStep += if (reply == "2") 1 else 2
             }
-            1 -> { Log.d(TAG, "Step 1 → sending '9'"); typeAndSend("9"); currentStep++ }
-            2 -> { Log.d(TAG, "Step 2 → sending '1'"); typeAndSend("1"); currentStep++ }
-            3 -> { Log.d(TAG, "Step 3 → sending PIN"); typeAndSend(pin); currentStep++ }
-            4 -> { Log.d(TAG, "Step 4 → Final result:\n$dialogText"); finishSession(dialogText) }
+            1 -> { Log.d(TAG, "Step 1 → sending '9'"); logInput("9"); typeAndSend("9"); currentStep++ }
+            2 -> { Log.d(TAG, "Step 2 → sending '1'"); logInput("1"); typeAndSend("1"); currentStep++ }
+            3 -> { Log.d(TAG, "Step 3 → sending PIN"); logInput(pin, mask = true); typeAndSend(pin); currentStep++ }
+            4 -> {
+                if (!hasInputField) {
+                    Log.d(TAG, "Step 4 → Balance check failed (no input on last step):\n$dialogText")
+                    failSession(dialogText)
+                    return
+                }
+                Log.d(TAG, "Step 4 → Final result:\n$dialogText")
+                finishSession(dialogText)
+            }
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────
     //  TASK: Send Money
-    //
-    //  *247# → Step 0 (continue? YES→"2" jump+1 / NO→"1" jump+2)
-    //        → Step 1 → "1"
-    //        → Step 2 → phoneNumber
-    //        → Step 3 → amount
-    //        → Step 4 → reference
-    //        → Step 5 → PIN
-    //        → Step 6 → capture result
     // ─────────────────────────────────────────────────────────────────────
-    private fun handleSendMoney(dialogText: String) {
+    private fun handleSendMoney(dialogText: String, hasInputField: Boolean) {
         when (currentStep) {
             0 -> {
                 val hasContinuePrompt = dialogText.contains("Do you want to continue", ignoreCase = true)
                 val reply = if (hasContinuePrompt) "2" else "1"
                 Log.d(TAG, "Step 0 → sending '$reply'")
+                logInput(reply)
                 typeAndSend(reply)
                 currentStep += if (reply == "2") 1 else 2
             }
-            1 -> { Log.d(TAG, "Step 1 → sending '1'"); typeAndSend("1"); currentStep++ }
-            2 -> { Log.d(TAG, "Step 2 → sending phoneNumber"); typeAndSend(phoneNumber); currentStep++ }
-            3 -> { Log.d(TAG, "Step 3 → sending amount"); typeAndSend(amount); currentStep++ }
-            4 -> { Log.d(TAG, "Step 4 → sending reference"); typeAndSend(reference); currentStep++ }
-            5 -> { Log.d(TAG, "Step 5 → sending PIN"); typeAndSend(pin); currentStep++ }
-            6 -> { Log.d(TAG, "Step 6 → Final result:\n$dialogText"); finishSession(dialogText) }
+            1 -> { Log.d(TAG, "Step 1 → sending '1'"); logInput("1"); typeAndSend("1"); currentStep++ }
+            2 -> { Log.d(TAG, "Step 2 → sending phoneNumber"); logInput(phoneNumber); typeAndSend(phoneNumber); currentStep++ }
+            3 -> { Log.d(TAG, "Step 3 → sending amount"); logInput(amount); typeAndSend(amount); currentStep++ }
+            4 -> { Log.d(TAG, "Step 4 → sending reference"); logInput(reference); typeAndSend(reference); currentStep++ }
+            5 -> { Log.d(TAG, "Step 5 → sending PIN"); logInput(pin, mask = true); typeAndSend(pin); currentStep++ }
+            6 -> {
+                if (hasInputField) {
+                    Log.d(TAG, "Step 6 → Send money failed (input still present on last step):\n$dialogText")
+                    failSession(dialogText)
+                    return
+                }
+                Log.d(TAG, "Step 6 → Final result:\n$dialogText")
+                finishSession(dialogText)
+            }
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────
     //  TASK: Cash Out
-    //
-    //  *247# → Step 0 (continue? YES→"2" jump+1 / NO→"5" jump+2)
-    //        → Step 1 → "5"
-    //        → Step 2 → "1"
-    //        → Step 3 → phoneNumber
-    //        → Step 4 → amount  (note: comment in spec labels this Step 3 — we use Step 4)
-    //        → Step 5 (PIN) → captured at Step 5 result
-    //  Wait — per spec the result is captured at Step 5, PIN is sent at Step 4.
-    //  Corrected mapping:
-    //        → Step 3 → phoneNumber
-    //        → Step 4 → amount
-    //        → Step 5 (no input) → capture result  ← getResultStep() = 5
-    //  But PIN must be sent before the result dialog. Re-reading spec:
-    //        → Step 3 → phoneNumber
-    //        → Step 4 → amount
-    //        → Step 5 → PIN       (but spec says "Step 4 → send PIN"?)
-    //  Using the literal step order from the spec comment:
-    //        Step 3 → phoneNumber, Step 3(b) → amount, Step 4 → PIN, Step 5 → result
-    //  Renumbered cleanly:
-    //        Step 3 → phoneNumber
-    //        Step 4 → amount
-    //        Step 5 → PIN         ← last input step
-    //        getResultStep() = 6  ← final result dialog (no input)
     // ─────────────────────────────────────────────────────────────────────
-    private fun handleCashOut(dialogText: String) {
+    private fun handleCashOut(dialogText: String, hasInputField: Boolean) {
         when (currentStep) {
             0 -> {
                 val hasContinuePrompt = dialogText.contains("Do you want to continue", ignoreCase = true)
                 val reply = if (hasContinuePrompt) "2" else "5"
                 Log.d(TAG, "Step 0 → sending '$reply'")
+                logInput(reply)
                 typeAndSend(reply)
                 currentStep += if (reply == "2") 1 else 2
             }
-            1 -> { Log.d(TAG, "Step 1 → sending '5'"); typeAndSend("5"); currentStep++ }
-            2 -> { Log.d(TAG, "Step 2 → sending '1'"); typeAndSend("1"); currentStep++ }
-            3 -> { Log.d(TAG, "Step 3 → sending phoneNumber"); typeAndSend(phoneNumber); currentStep++ }
-            4 -> { Log.d(TAG, "Step 4 → sending amount"); typeAndSend(amount); currentStep++ }
-            5 -> { Log.d(TAG, "Step 5 → sending PIN"); typeAndSend(pin); currentStep++ }
-            6 -> { Log.d(TAG, "Step 6 → Final result:\n$dialogText"); finishSession(dialogText) }
+            1 -> { Log.d(TAG, "Step 1 → sending '5'"); logInput("5"); typeAndSend("5"); currentStep++ }
+            2 -> { Log.d(TAG, "Step 2 → sending '1'"); logInput("1"); typeAndSend("1"); currentStep++ }
+            3 -> { Log.d(TAG, "Step 3 → sending phoneNumber"); logInput(phoneNumber); typeAndSend(phoneNumber); currentStep++ }
+            4 -> { Log.d(TAG, "Step 4 → sending amount"); logInput(amount); typeAndSend(amount); currentStep++ }
+            5 -> { Log.d(TAG, "Step 5 → sending PIN"); logInput(pin, mask = true); typeAndSend(pin); currentStep++ }
+            6 -> {
+                if (hasInputField) {
+                    Log.d(TAG, "Step 6 → Cash out failed (input still present on last step):\n$dialogText")
+                    failSession(dialogText)
+                    return
+                }
+                Log.d(TAG, "Step 6 → Final result:\n$dialogText")
+                finishSession(dialogText)
+            }
         }
     }
 
@@ -222,13 +240,7 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     private fun finishSession(dialogText: String) {
-        isRunning = false
-        currentStep = 0
-        lastDialogText = ""
-        balanceSentContinue = false
-        phoneNumber = ""
-        amount = ""
-        reference = ""
+        cleanupSessionState()
 
         Handler(Looper.getMainLooper()).postDelayed({
             val root = rootInActiveWindow ?: return@postDelayed
@@ -238,6 +250,31 @@ class UssdAccessibilityService : AccessibilityService() {
         Handler(Looper.getMainLooper()).post {
             onResult?.invoke(dialogText)
         }
+    }
+
+    private fun failSession(errorText: String) {
+        Log.e(TAG, "❌ Session failed:\n$errorText")
+        cleanupSessionState()
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            val root = rootInActiveWindow ?: return@postDelayed
+            clickButton(root, listOf("OK", "Done", "Close", "Cancel", "Dismiss"))
+        }, 500)
+
+        Handler(Looper.getMainLooper()).post {
+            onError?.invoke(errorText)
+        }
+    }
+
+    private fun cleanupSessionState() {
+        isRunning = false
+        currentStep = 0
+        lastDialogText = ""
+        seenInitialLoadingDialog = false
+        balanceSentContinue = false
+        phoneNumber = ""
+        amount = ""
+        reference = ""
     }
 
     private fun clickButton(root: AccessibilityNodeInfo, labels: List<String>): Boolean {
@@ -284,16 +321,33 @@ class UssdAccessibilityService : AccessibilityService() {
     }
 
     private fun extractText(node: AccessibilityNodeInfo): String {
-        val sb = StringBuilder()
-        collectText(node, sb)
-        return sb.toString()
+        val lines = linkedSetOf<String>()
+        collectText(node, lines)
+        return lines.joinToString("\n")
     }
 
-    private fun collectText(node: AccessibilityNodeInfo, sb: StringBuilder) {
-        if (!node.text.isNullOrEmpty()) sb.append(node.text).append("\n")
-        for (i in 0 until node.childCount) {
-            node.getChild(i)?.let { collectText(it, sb) }
+    private fun collectText(node: AccessibilityNodeInfo, lines: LinkedHashSet<String>) {
+        val text = node.text?.toString()?.trim().orEmpty()
+        if (text.isNotEmpty() && shouldKeepDialogText(node, text)) {
+            lines.add(text)
         }
+
+        for (i in 0 until node.childCount) {
+            node.getChild(i)?.let { collectText(it, lines) }
+        }
+    }
+
+    private fun shouldKeepDialogText(node: AccessibilityNodeInfo, text: String): Boolean {
+        val actionTexts = setOf(
+            "send", "ok", "reply", "proceed", "done", "close", "cancel", "dismiss", "yes", "no", "back"
+        )
+
+        if (actionTexts.contains(text.lowercase())) return false
+
+        val className = node.className?.toString().orEmpty()
+        if (className.contains("Button", ignoreCase = true) && text.length <= 20) return false
+
+        return true
     }
 
     private fun findEditText(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {

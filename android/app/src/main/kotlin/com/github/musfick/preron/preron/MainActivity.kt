@@ -22,10 +22,11 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
 
     companion object {
-        private const val METHOD_CHANNEL = "com.github.musfick.preron.preron/ussd"
-        private const val EVENT_CHANNEL  = "com.github.musfick.preron.preron/ussd_events"
-        private const val CALL_PHONE_REQUEST = 1001
-        private const val TAG = "MAIN_ACTIVITY"
+        private const val METHOD_CHANNEL        = "com.github.musfick.preron.preron/ussd"
+        private const val EVENT_CHANNEL         = "com.github.musfick.preron.preron/ussd_events"
+        private const val CALL_PHONE_REQUEST    = 1001
+        private const val OVERLAY_PERMISSION_RC = 1002
+        private const val TAG                   = "MAIN_ACTIVITY"
     }
 
     private var eventSink: EventChannel.EventSink? = null
@@ -57,6 +58,53 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
 
+                    // ── Overlay permission ─────────────────────────────────
+                    "checkOverlayPermission" -> {
+                        result.success(hasOverlayPermission())
+                    }
+
+                    "requestOverlayPermission" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                            !Settings.canDrawOverlays(this)
+                        ) {
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:$packageName")
+                            )
+                            startActivityForResult(intent, OVERLAY_PERMISSION_RC)
+                        }
+                        result.success(null)
+                    }
+
+                    // ── Overlay service control ────────────────────────────
+                    "startOverlay" -> {
+                        if (!hasOverlayPermission()) {
+                            result.error("NO_OVERLAY_PERMISSION",
+                                "SYSTEM_ALERT_WINDOW permission required", null)
+                            return@setMethodCallHandler
+                        }
+                        val intent = Intent(this, UssdOverlayService::class.java)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                        result.success(true)
+                    }
+
+                    "stopOverlay" -> {
+                        stopService(Intent(this, UssdOverlayService::class.java))
+                        result.success(true)
+                    }
+
+                    "clearOverlayLogs" -> {
+                        startService(
+                            Intent(this, UssdOverlayService::class.java)
+                                .setAction(UssdOverlayService.ACTION_CLEAR)
+                        )
+                        result.success(null)
+                    }
+
                     // ── Get SIM list ───────────────────────────────────────
                     "getSimCards" -> {
                         if (!hasPhoneStatePermission()) {
@@ -69,7 +117,6 @@ class MainActivity : FlutterActivity() {
                     }
 
                     // ── Balance Check ──────────────────────────────────────
-                    // Args: { "pin": "1234", "simIndex": 0 }
                     "checkBalance" -> {
                         val pin      = call.argument<String>("pin") ?: ""
                         val simIndex = call.argument<Int>("simIndex") ?: 0
@@ -80,6 +127,9 @@ class MainActivity : FlutterActivity() {
                                 "Enable the USSD accessibility service first", null)
                             return@setMethodCallHandler
                         }
+
+                        // Auto-start overlay if permission granted
+                        maybeStartOverlay()
 
                         UssdAccessibilityService.apply {
                             currentTask  = UssdAccessibilityService.UssdTask.BALANCE_CHECK
@@ -114,8 +164,6 @@ class MainActivity : FlutterActivity() {
                     }
 
                     // ── Send Money ─────────────────────────────────────────
-                    // Args: { "pin": "1234", "simIndex": 0, "phoneNumber": "01XXXXXXXXX",
-                    //         "amount": "500", "reference": "rent" }
                     "sendMoney" -> {
                         val pin         = call.argument<String>("pin") ?: ""
                         val simIndex    = call.argument<Int>("simIndex") ?: 0
@@ -129,6 +177,8 @@ class MainActivity : FlutterActivity() {
                                 "Enable the USSD accessibility service first", null)
                             return@setMethodCallHandler
                         }
+
+                        maybeStartOverlay()
 
                         UssdAccessibilityService.apply {
                             currentTask        = UssdAccessibilityService.UssdTask.SEND_MONEY
@@ -166,8 +216,6 @@ class MainActivity : FlutterActivity() {
                     }
 
                     // ── Cash Out ───────────────────────────────────────────
-                    // Args: { "pin": "1234", "simIndex": 0,
-                    //         "phoneNumber": "01XXXXXXXXX", "amount": "500" }
                     "cashOut" -> {
                         val pin         = call.argument<String>("pin") ?: ""
                         val simIndex    = call.argument<Int>("simIndex") ?: 0
@@ -180,6 +228,8 @@ class MainActivity : FlutterActivity() {
                                 "Enable the USSD accessibility service first", null)
                             return@setMethodCallHandler
                         }
+
+                        maybeStartOverlay()
 
                         UssdAccessibilityService.apply {
                             currentTask        = UssdAccessibilityService.UssdTask.CASH_OUT
@@ -219,6 +269,22 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Overlay helpers
+    // ─────────────────────────────────────────────────────────────────────
+    private fun hasOverlayPermission(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+            Settings.canDrawOverlays(this)
+        else true
+
+    private fun maybeStartOverlay() {
+        if (!hasOverlayPermission()) return
+        if (UssdOverlayService.instance != null) return // already running
+        val intent = Intent(this, UssdOverlayService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
+        else startService(intent)
     }
 
     // ─────────────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ class _PermissionScreenState extends State<PermissionScreen>
 
   bool _callPermissionGranted = false;
   bool _accessibilityEnabled = false;
+  bool _overlayEnabled = false;
   bool _isLoading = true;
 
   @override
@@ -82,6 +83,22 @@ class _PermissionScreenState extends State<PermissionScreen>
     }
   }
 
+  Future<void> requestOverlayPermission() async {
+    try {
+      await UssdService.requestOverlayPermission();
+      if (mounted) setState(() => _overlayEnabled = true);
+    } catch (e) {
+      debugPrint('Overlay permission request error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to request Overlay Permission'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool canContinue = _callPermissionGranted && _accessibilityEnabled;
@@ -133,6 +150,15 @@ class _PermissionScreenState extends State<PermissionScreen>
                       isLoading: _isLoading,
                       onAction: openAccessibilitySettings,
                       actionText: 'Enable',
+                    ),
+                    SizedBox(height: 24),
+                    PermissionCard(
+                      title: 'Overlay Permission',
+                      iconData: Icons.screen_lock_portrait,
+                      isGranted: _overlayEnabled,
+                      isLoading: _isLoading,
+                      onAction: requestOverlayPermission,
+                      actionText: 'Grant',
                     ),
                     SizedBox(height: 24),
                     PreronButton(
